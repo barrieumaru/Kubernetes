@@ -1,0 +1,208 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+  },
+  "variables": {
+  },
+  "resources": [
+    {
+      "apiVersion": "{{apiVersion}}",
+      "type": "Microsoft.Network/routeTables",
+      "name": "{{routeTableName}}",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "routes": [
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "{{virtualNetworkName}}",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "{{apiVersion}}",
+      "dependsOn": [
+        "[concat('Microsoft.Network/routeTables/', '{{routeTableName}}')]"
+      ],
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "{{azure_vnet_cidr}}"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "{{subnetMastersName}}",
+            "properties": {
+              "addressPrefix": "{{azure_masters_cidr}}",
+              "routeTable": {
+                "id": "[resourceId('Microsoft.Network/routeTables', '{{routeTableName}}')]"
+              }
+            }
+          },
+          {
+            "name": "{{subnetMinionsName}}",
+            "properties": {
+              "addressPrefix": "{{azure_minions_cidr}}",
+              "routeTable": {
+                "id": "[resourceId('Microsoft.Network/routeTables', '{{routeTableName}}')]"
+              }
+            }
+          }
+          {% if use_bastion %}
+          ,{
+            "name": "{{subnetAdminName}}",
+            "properties": {
+              "addressPrefix": "{{azure_admin_cidr}}",
+              "routeTable": {
+                "id": "[resourceId('Microsoft.Network/routeTables', '{{routeTableName}}')]"
+              }
+            }
+          }
+          {% endif %}
+        ]
+      }
+    },
+    {
+      "apiVersion": "{{apiVersion}}",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "{{securityGroupName}}",
+      "location": "[resourceGroup().location]",
+      "properties": {
+          "securityRules": [
+            {% if not use_bastion %}
+            {
+              "name": "ssh",
+              "properties": {
+                "description": "Allow SSH",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "22",
+                "sourceAddressPrefix": "Internet",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 100,
+                "direction": "Inbound"
+              }
+            },
+            {% endif %}
+            {
+              "name": "kube-api",
+              "properties": {
+                "description": "Allow secure kube-api",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "{{kube_apiserver_port}}",
+                "sourceAddressPrefix": "Internet",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 101,
+                "direction": "Inbound"
+              }
+          },
+              {
+              "name": "http",
+              "properties": {
+                "description": "http",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "80",
+                "sourceAddressPrefix": "Internet",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 102,
+                "direction": "Inbound"
+              }
+            },
+            {
+              "name": "https",
+              "properties": {
+                "description": "Allow secure https",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "443",
+                "sourceAddressPrefix": "Internet",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 103,
+                "direction": "Inbound"
+              }
+            },
+            {
+              "name": "etcd",
+              "properties": {
+                "description": "Allow secure etcd",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "2379-2380",
+                "sourceAddressPrefix": "Internet",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 104,
+                "direction": "Inbound"
+              }
+            },
+            {
+              "name": "nodes",
+              "properties": {
+                "description": "Allow secure nodes",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "10250-10252",
+                "sourceAddressPrefix": "Internet",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 105,
+                "direction": "Inbound"
+              }
+            },
+            {
+              "name": "weavenetcp",
+              "properties": {
+                "description": "Allow secure weavnettcp",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "6783",
+                "sourceAddressPrefix": "Internet",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 106,
+                "direction": "Inbound"
+              }
+            },
+            {
+              "name": "weavenetudp",
+              "properties": {
+                "description": "Allow secure weavenetudp",
+                "protocol": "Udp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "6783-6784",
+                "sourceAddressPrefix": "Internet",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 107,
+                "direction": "Inbound"
+              }
+            },
+            {
+              "name": "workerpods",
+              "properties": {
+                "description": "Allow secure workerpods",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "30000-33000",
+                "sourceAddressPrefix": "Internet",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 108,
+                "direction": "Inbound"
+              }
+                        },
+          ]
+      },
+      "resources": [],
+      "dependsOn": []
+    }
+  ]
+}
+

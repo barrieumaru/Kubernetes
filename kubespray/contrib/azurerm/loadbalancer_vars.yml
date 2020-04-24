@@ -1,0 +1,8 @@
+## External LB example config
+apiserver_loadbalancer_domain_name: vives-internship-api.westeurope.cloudapp.azure.com
+loadbalancer_apiserver:
+  address: 52.166.194.8
+  port: 6443
+
+## Internal loadbalancers for apiservers
+loadbalancer_apiserver_localhost: false
